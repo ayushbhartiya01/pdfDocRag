@@ -1,0 +1,19 @@
+# Direct (top-level) runtime dependencies only — pip resolves the rest.
+# This mirrors [project.dependencies] in pyproject.toml.
+# For development incl. tests, prefer:  pip install -e ".[test]"
+
+# --- LangChain core + integrations (langchain-community intentionally dropped:
+#     it is being sunset; the PDF loader uses pdfplumber + langchain-core directly) ---
+langchain-core>=1.4
+langchain-text-splitters>=1.1
+langchain-huggingface>=1.2        # local HuggingFace embeddings
+langchain-chroma>=1.1             # Chroma vector store
+langchain-groq>=1.1               # free Groq chat models (Llama 3.3 70B)
+
+# --- Models / storage backends ---
+sentence-transformers>=2.2        # local embedding backend (pulls torch + transformers)
+chromadb>=1.5                     # persistent vector DB
+pdfplumber>=0.11                  # PDF parsing with word coordinates (column-aware extraction)
+
+# --- Config ---
+python-dotenv>=1

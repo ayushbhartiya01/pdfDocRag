@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>pdfDocRag — Technologies &amp; Data Flow</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2230;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --lc: #2ea88a;        /* LangChain green */
+    --groq: #f55036;      /* Groq orange */
+    --embed: #58a6ff;     /* local embeddings blue */
+    --guard: #d29922;     /* guardrail amber */
+    --block: #f85149;     /* refusal red */
+    --store: #a371f7;     /* vector store purple */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    padding: 0 0 80px;
+  }
+  header {
+    padding: 56px 24px 40px;
+    text-align: center;
+    background: radial-gradient(900px 360px at 50% -120px, rgba(46,168,138,.18), transparent 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 2.6rem; letter-spacing: -.02em; }
+  header h1 .rag { color: var(--lc); }
+  header p { color: var(--muted); margin-top: 10px; font-size: 1.05rem; }
+  .pills { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .pill { font-size: .8rem; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+  main { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  section { margin-top: 56px; }
+  h2 { font-size: 1.5rem; margin-bottom: 6px; letter-spacing: -.01em; }
+  h2 .num { color: var(--lc); font-variant-numeric: tabular-nums; margin-right: 10px; }
+  .sub { color: var(--muted); margin-bottom: 22px; }
+
+  /* Tech stack grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: transform .15s, border-color .15s; }
+  .card:hover { transform: translateY(-3px); border-color: var(--lc); }
+  .card .top { display: flex; align-items: center; gap: 10px; }
+  .card .ico { font-size: 1.4rem; }
+  .card h3 { font-size: 1rem; }
+  .card .role { color: var(--muted); font-size: .88rem; margin-top: 8px; }
+  .tag { display: inline-block; margin-top: 12px; font-size: .72rem; padding: 3px 9px; border-radius: 6px; font-weight: 600; }
+  .tag.free { background: rgba(46,168,138,.15); color: #4fd1ab; }
+  .tag.local { background: rgba(88,166,255,.15); color: var(--embed); }
+  .tag.cloud { background: rgba(245,80,54,.15); color: #ff7a63; }
+
+  /* Flow diagrams */
+  .flow-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px 20px; overflow-x: auto; }
+  .flow-title { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 18px; }
+  .flow { display: flex; align-items: stretch; gap: 0; min-width: max-content; }
+  .node {
+    border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px;
+    padding: 12px 14px; min-width: 116px; text-align: center; position: relative;
+  }
+  .node .label { font-weight: 600; font-size: .92rem; }
+  .node .meta { color: var(--muted); font-size: .72rem; margin-top: 4px; }
+  .node.start { border-color: #444c56; }
+  .node.embed { border-color: var(--embed); box-shadow: inset 0 0 0 1px rgba(88,166,255,.25); }
+  .node.store { border-color: var(--store); box-shadow: inset 0 0 0 1px rgba(163,113,247,.25); }
+  .node.gen   { border-color: var(--groq); box-shadow: inset 0 0 0 1px rgba(245,80,54,.25); }
+  .node.guard { border-color: var(--guard); background: rgba(210,153,34,.08); box-shadow: inset 0 0 0 1px rgba(210,153,34,.35); }
+  .node.guard .meta { color: #e3b341; }
+  .arrow { align-self: center; color: var(--muted); padding: 0 10px; font-size: 1.2rem; flex: 0 0 auto; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; font-size: .8rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  /* Guardrail callouts */
+  .rails { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .rail { border: 1px solid var(--border); border-left: 3px solid var(--guard); border-radius: 10px; background: var(--surface); padding: 16px; }
+  .rail h4 { font-size: .98rem; margin-bottom: 6px; }
+  .rail p { color: var(--muted); font-size: .88rem; }
+
+  /* Structure tree */
+  pre.tree { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto;
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; font-size: .84rem; color: var(--text); line-height: 1.7; }
+  pre.tree .c { color: var(--muted); }
+  pre.tree .d { color: var(--embed); }
+
+  footer { text-align: center; color: var(--muted); font-size: .82rem; margin-top: 64px; padding: 0 24px; }
+  a { color: var(--lc); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>pdf<span class="rag">Rag</span></h1>
+    <p>A LangChain-native PDF question-answering pipeline with built-in guardrails.</p>
+    <div class="pills">
+      <span class="pill">🦜 End-to-end LangChain</span>
+      <span class="pill">🆓 Free models</span>
+      <span class="pill">🛡️ Guardrails in-pipeline</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- TECH STACK -->
+    <section>
+      <h2><span class="num">01</span>Technologies used</h2>
+      <p class="sub">Every stage of the pipeline is a LangChain component. Embeddings run locally; generation uses Groq's free tier.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="top"><span class="ico">🦜</span><h3>LangChain Core</h3></div>
+          <div class="role">LCEL runnables, prompt templates, output parsers and the <code>Document</code> type that glue every stage together.</div>
+          <span class="tag free">free · open source</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">✂️</span><h3>langchain-text-splitters</h3></div>
+          <div class="role"><code>RecursiveCharacterTextSplitter</code> chops pages into overlapping, retrievable chunks.</div>
+          <span class="tag free">free · open source</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">📄</span><h3>pdfplumber</h3></div>
+          <div class="role">Column-aware extraction via word coordinates — reads two-column papers in correct order. Replaces the sunset <code>langchain-community</code> loader.</div>
+          <span class="tag local">local</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">🔡</span><h3>langchain-huggingface</h3></div>
+          <div class="role"><code>all-MiniLM-L6-v2</code> sentence-transformer turns text into 384-dim vectors — on your machine, no key.</div>
+          <span class="tag local">local · free</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">🗃️</span><h3>langchain-chroma</h3></div>
+          <div class="role">Persistent Chroma vector store (cosine space) for fast similarity search with relevance scores.</div>
+          <span class="tag local">local · free</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">⚡</span><h3>langchain-groq</h3></div>
+          <div class="role"><code>llama-3.3-70b-versatile</code> generates the final answer via Groq's very fast free API tier.</div>
+          <span class="tag cloud">cloud · free tier</span>
+        </div>
+        <div class="card">
+          <div class="top"><span class="ico">🛡️</span><h3>Custom guardrails</h3></div>
+          <div class="role">Plain-Python input / grounding / output checks — no external service, fully transparent.</div>
+          <span class="tag free">free · in-repo</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA FLOW -->
+    <section>
+      <h2><span class="num">02</span>How data flows</h2>
+      <p class="sub">Two flows: indexing happens once; querying runs every question through the guardrails.</p>
+
+      <div class="flow-wrap" style="margin-bottom:18px;">
+        <div class="flow-title">① Indexing (build once)</div>
+        <div class="flow">
+          <div class="node start"><div class="label">PDF</div><div class="meta">data/sample.pdf</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="label">Load</div><div class="meta">pdfplumber · column-aware</div></div>
+          <div class="arrow">→</div>
+          <div class="node"><div class="label">Chunk</div><div class="meta">RecursiveSplitter</div></div>
+          <div class="arrow">→</div>
+          <div class="node embed"><div class="label">Embed</div><div class="meta">MiniLM (local)</div></div>
+          <div class="arrow">→</div>
+          <div class="node store"><div class="label">Store</div><div class="meta">Chroma (cosine)</div></div>
+        </div>
+      </div>
+
+      <div class="flow-wrap">
+        <div class="flow-title">② Query (every question)</div>
+        <div class="flow">
+          <div class="node start"><div class="label">Question</div><div class="meta">user input</div></div>
+          <div class="arrow">→</div>
+          <div class="node guard"><div class="label">🛡️ Input guard</div><div class="meta">injection · length</div></div>
+          <div class="arrow">→</div>
+          <div class="node store"><div class="label">Retrieve</div><div class="meta">top-k + scores</div></div>
+          <div class="arrow">→</div>
+          <div class="node guard"><div class="label">🛡️ Grounding</div><div class="meta">relevance ≥ τ</div></div>
+          <div class="arrow">→</div>
+          <div class="node gen"><div class="label">Generate</div><div class="meta">Groq Llama 3.3</div></div>
+          <div class="arrow">→</div>
+          <div class="node guard"><div class="label">🛡️ Output guard</div><div class="meta">PII redaction</div></div>
+          <div class="arrow">→</div>
+          <div class="node start"><div class="label">Answer</div><div class="meta">to user</div></div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--embed)"></i> local embeddings</span>
+          <span><i class="dot" style="background:var(--store)"></i> vector store</span>
+          <span><i class="dot" style="background:var(--guard)"></i> guardrail (can short-circuit to a safe refusal)</span>
+          <span><i class="dot" style="background:var(--groq)"></i> Groq generation</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- GUARDRAILS -->
+    <section>
+      <h2><span class="num">03</span>The guardrails</h2>
+      <p class="sub">Wired directly into the LCEL pipeline; any layer can stop the request and return a safe message.</p>
+      <div class="rails">
+        <div class="rail">
+          <h4>🛡️ Input guard</h4>
+          <p>Rejects empty / too-short / too-long questions and detects prompt-injection &amp; jailbreak patterns (“ignore previous instructions”, “developer mode”, “reveal your system prompt”…).</p>
+        </div>
+        <div class="rail">
+          <h4>🛡️ Grounding guard</h4>
+          <p>If the best retrieved chunk scores below the relevance threshold, the pipeline refuses instead of letting the model hallucinate — and skips the LLM call entirely.</p>
+        </div>
+        <div class="rail">
+          <h4>🛡️ Output guard</h4>
+          <p>Redacts emails, phone numbers, SSNs and card-like numbers from the answer before it reaches the user.</p>
+        </div>
+        <div class="rail">
+          <h4>🛡️ Prompt hardening</h4>
+          <p>The system prompt confines the model to the retrieved context and treats that context as data, never as instructions — defense-in-depth against injection via the PDF.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STRUCTURE -->
+    <section>
+      <h2><span class="num">04</span>Project structure</h2>
+      <p class="sub">A standard <code>src/</code> layout with logically grouped subpackages.</p>
+      <pre class="tree">pdfDocRag/
+├── pyproject.toml          <span class="c"># metadata, deps, console script</span>
+├── requirements.txt        <span class="c"># direct runtime deps</span>
+├── .env.example            <span class="c"># copy to .env, add your Groq key</span>
+├── <span class="d">docs/</span>
+│   └── index.html          <span class="c"># this page</span>
+├── <span class="d">data/</span>
+│   └── sample.pdf
+└── <span class="d">src/pdfrag/</span>
+    ├── cli.py              <span class="c"># `pdfrag` / `python -m pdfrag`</span>
+    ├── config.py           <span class="c"># paths, models, tunables</span>
+    ├── pipeline.py         <span class="c"># guarded RAG pipeline (LCEL)</span>
+    ├── guardrails.py       <span class="c"># input / grounding / output</span>
+    ├── <span class="d">ingestion/</span>        <span class="c"># pdf_loader, chunker</span>
+    ├── <span class="d">retrieval/</span>        <span class="c"># embeddings, vector_store, indexer, search</span>
+    └── <span class="d">generation/</span>       <span class="c"># rag (ChatGroq + LCEL chain)</span></pre>
+    </section>
+
+    <footer>
+      Generated for the pdfDocRag project · embeddings local &amp; free · generation on Groq's free tier
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdfrag"
+version = "0.1.0"
+description = "A LangChain-native PDF RAG pipeline with built-in guardrails"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-core>=1.4",
+    "langchain-text-splitters>=1.1",
+    "langchain-huggingface>=1.2",
+    "langchain-chroma>=1.1",
+    "langchain-groq>=1.1",
+    "sentence-transformers>=2.2",
+    "chromadb>=1.5",
+    "pdfplumber>=0.11",
+    "python-dotenv>=1",
+]
+
+[project.scripts]
+pdfrag = "pdfrag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

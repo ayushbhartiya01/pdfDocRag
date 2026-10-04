@@ -53,21 +53,9 @@ I don't have enough information in the document to answer that.   ← grounding 
 
 ## 1. Prerequisites
 
-### Python installation
+### Python and uv
 
-This project needs **Python 3.10 or newer** (developed on 3.14). Check what you have:
-
-```bash
-python3 --version
-```
-
-If you don't have it (or it's older):
-
-| OS | Install |
-|----|---------|
-| **macOS** | `brew install python` (Homebrew) or download from [python.org](https://www.python.org/downloads/) |
-| **Windows** | Download from [python.org](https://www.python.org/downloads/) and tick *"Add Python to PATH"* |
-| **Linux (Debian/Ubuntu)** | `sudo apt update && sudo apt install python3 python3-venv python3-pip` |
+This project requires **Python 3.12 or newer**. Install [uv](https://docs.astral.sh/uv/getting-started/installation/); uv can install the required Python version for you.
 
 ### A free Groq API key
 
@@ -82,31 +70,35 @@ Generation runs on Groq. Create a free key at **https://console.groq.com/keys** 
 git clone <your-repo-url> pdfDocRag
 cd pdfDocRag
 
-# 2. Create and activate a virtual environment (isolates dependencies)
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-# 3. Install the project (editable) — reads pyproject.toml and pulls all deps
-pip install -e .
-```
-
-`pip install -e .` installs the package in **editable** mode: your source under
-`src/` stays live (edits take effect immediately) and you get a `pdfrag` command
-on your PATH.
-
-or if using `UV`
-```bash
-# 1. Install desired python version
+# 2. Install Python 3.12 if it is not already available to uv
 uv python install 3.12
 
-# 2. Create and activate virtual environment
-uv venv --python 3.12
-
-# 3. If your pyproject.toml already specifies standard Python dependencies under a [project.dependencies] section, you can simply run uv sync instead to align your environment with that file
+# 3. Create/sync .venv from pyproject.toml and uv.lock
 uv sync
 
-# 4. Run project
+# 4. Run the app inside the project environment
 uv run pdfrag
+```
+
+`uv sync` creates and manages the project-local `.venv`; `uv run` runs commands
+inside it without requiring manual activation. `uv.lock` pins the resolved
+dependency versions for reproducible installs.
+
+For tests, sync the optional test dependency and run pytest:
+
+```bash
+uv sync --extra test
+uv run pytest
+```
+
+For pip users, an alternative is to create a virtual environment and install
+the project and requirements:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e . -r requirements.txt
+pdfrag
 ```
 ---
 
@@ -122,7 +114,7 @@ build-backend = "setuptools.build_meta"
 
 [project]                            # name, version, and the dependency list
 name = "pdfrag"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "langchain-core>=1.4",
     "langchain-text-splitters>=1.1",
@@ -189,9 +181,13 @@ RELEVANCE_THRESHOLD=0.2
 ```
 pdfDocRag/
 ├── pyproject.toml          # project metadata, deps, console script
-├── requirements.txt        # direct runtime deps (mirrors pyproject)
+├── requirements.txt        # runtime deps and pytest for pip users
 ├── .env.example            # copy to .env and add your Groq key
 ├── README.md
+├── tests/                  # offline unit tests (pytest)
+│   ├── test_guardrails.py
+│   ├── test_chunker.py
+│   └── test_pdf_loader.py
 ├── docs/
 │   └── index.html          # visual tech-stack + data-flow reference
 ├── data/
@@ -309,7 +305,25 @@ retrieved context and to treat that context as data, never as instructions.
 
 ---
 
-## 9. Notes
+## 9. Tests
+
+Sync the test extra and run the suite from the project root:
+
+```bash
+uv sync --extra test
+uv run pytest
+```
+
+For pip users, install the project and its requirements (including pytest),
+then run `pytest`. Or install the optional test extra with
+`pip install -e ".[test]"`.
+
+The unit tests use local inputs and do not call Groq, download embedding models,
+or modify the Chroma database.
+
+---
+
+## 10. Notes
 
 - **Model cache.** The embedding model (~87 MB) downloads once into
   `~/.cache/huggingface/hub/` — a user-level cache, independent of this project

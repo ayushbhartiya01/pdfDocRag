@@ -1,6 +1,5 @@
-# Direct (top-level) runtime dependencies only — pip resolves the rest.
-# This mirrors [project.dependencies] in pyproject.toml.
-# For development incl. tests, prefer:  pip install -e ".[test]"
+# Direct (top-level) runtime dependencies — pip resolves the rest.
+# Runtime dependencies mirror [project.dependencies] in pyproject.toml.
 
 # --- LangChain core + integrations (langchain-community intentionally dropped:
 #     it is being sunset; the PDF loader uses pdfplumber + langchain-core directly) ---
@@ -17,3 +16,6 @@ pdfplumber>=0.11                  # PDF parsing with word coordinates (column-aw
 
 # --- Config ---
 python-dotenv>=1
+
+# --- Tests ---
+pytest>=8

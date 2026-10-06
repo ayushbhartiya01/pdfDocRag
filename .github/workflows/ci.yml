@@ -18,6 +18,7 @@ jobs:
 
       - name: Run Pytest Coverage via uv
         run: |
+          uv sync --extra test
           uv run pytest
 
       - name: Configure AWS Credentials

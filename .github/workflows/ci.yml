@@ -38,7 +38,7 @@ jobs:
       - name: Build, Tag, and Push Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          ECR_REPOSITORY: pdf-doc-rag-prod
+          ECR_REPOSITORY: s2r2u0a9/pdf-doc-rag-prod
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .

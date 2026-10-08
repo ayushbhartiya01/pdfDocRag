@@ -29,4 +29,7 @@ RUN uv sync --frozen --no-dev
 
 # Step 8: Define how to run the container application by default
 # (You can modify this later to run your web API, like: ["uv", "run", "fastapi", "run"])
-CMD ["uv", "run", "pytest"]
+# CMD ["uv", "run", "pytest"]
+# Launch uvicorn daemon process to continuously listen on port 8000
+CMD ["uv", "run", "uvicorn", "pdfrag.server:app", "--host", "0.0.0.0", "--port", "8000"]
+
